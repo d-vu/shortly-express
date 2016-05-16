@@ -33,6 +33,49 @@ function(req, res) {
   res.render('index');
 });
 
+app.get('/login', 
+function(req, res) {
+  res.render('login');
+});
+
+app.post('/login',
+  function(req, res) {
+    res.send("hello!");
+  }
+);
+
+app.get('/signup', 
+function(req, res) {
+  res.render('signup');
+});
+
+app.post('/signup',
+  function(req, res) {
+    var theUserName = req.body.username;
+    var pass = req.body.password;
+
+    new User({ username: theUserName, password: pass}).fetch().then(function(found) {
+      if (found) {
+        res.status(200).send(found.attributes);
+      } else {
+
+        Users.create({
+          username: theUserName,
+          password: pass
+        })
+        .then(function(newUser) {
+          res.status(200).send(newUser);
+        });
+
+      }
+    });
+    // db.knex.insert({username: theUserName, password: pass}).into('users')
+    //   .then( function(result) {
+    //     res.send("Check the database!");
+    //   });
+  }
+);
+
 app.get('/links', 
 function(req, res) {
   Links.reset().fetch().then(function(links) {
@@ -53,6 +96,7 @@ function(req, res) {
     if (found) {
       res.status(200).send(found.attributes);
     } else {
+      console.log('>>>>>>>>>>>>>>>>> not found');
       util.getUrlTitle(uri, function(err, title) {
         if (err) {
           console.log('Error reading URL heading: ', err);
