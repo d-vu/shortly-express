@@ -38,8 +38,14 @@ var redirect = function(req, res, next){
   }
 };
 
+var check = function () {
+  alert('LOLOLL');
+  console.log("We are in shortly.js");
+};
+
 app.get('/', redirect,
 function(req, res) {
+  console.log(req.session);
   res.render('index');
 });
 
@@ -50,6 +56,7 @@ function(req, res) {
 
 app.get('/login', 
 function(req, res) {
+  req.session.destroy();
   res.render('login');
 });
 
