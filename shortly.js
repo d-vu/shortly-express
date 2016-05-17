@@ -2,7 +2,7 @@ var express = require('express');
 var util = require('./lib/utility');
 var partials = require('express-partials');
 var bodyParser = require('body-parser');
-
+var session = require('client-sessions');
 
 var db = require('./app/config');
 var Users = require('./app/collections/users');
@@ -22,13 +22,28 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(__dirname + '/public'));
 
+app.use(session({
+  cookieName: 'session',
+  secret: '1234',
+  duration: 1000 * 60 * 10, // 10 mins
+  activeDuration: 5 * 60 * 1000 //5 mins
+}));
 
-app.get('/', 
+
+var redirect = function(req, res, next){
+  if(req.session.validUser){
+    next();
+  } else {
+    res.redirect('/login');
+  }
+};
+
+app.get('/', redirect,
 function(req, res) {
   res.render('index');
 });
 
-app.get('/create', 
+app.get('/create', redirect,
 function(req, res) {
   res.render('index');
 });
@@ -40,7 +55,21 @@ function(req, res) {
 
 app.post('/login',
   function(req, res) {
-    res.send("hello!");
+
+    var theUserName = req.body.username;
+    var pass = req.body.password;
+    
+    new User({ username: theUserName, password: pass}).fetch().then(function(found) {
+      // valid user name nad password
+      if (found) {
+        // create session variable 
+        req.session.validUser = { username: theUserName, password: pass};
+        console.log(req.session.validUser);
+        res.status(200).send('Correct username and password');
+      } else {
+        res.status(200).send('Wrong username and password');
+      }
+    });
   }
 );
 
@@ -54,29 +83,26 @@ app.post('/signup',
     var theUserName = req.body.username;
     var pass = req.body.password;
 
-    new User({ username: theUserName, password: pass}).fetch().then(function(found) {
+    new User({ username: theUserName}).fetch().then(function(found) {
+      // username or password already exists
       if (found) {
-        res.status(200).send(found.attributes);
+        res.status(200).send('username already exists');
       } else {
-
+      // create new username and password and redirect to homepage
         Users.create({
           username: theUserName,
           password: pass
         })
         .then(function(newUser) {
-          res.status(200).send(newUser);
+          res.status(200).redirect('/');
         });
 
       }
     });
-    // db.knex.insert({username: theUserName, password: pass}).into('users')
-    //   .then( function(result) {
-    //     res.send("Check the database!");
-    //   });
   }
 );
 
-app.get('/links', 
+app.get('/links', redirect, 
 function(req, res) {
   Links.reset().fetch().then(function(links) {
     res.status(200).send(links.models);
@@ -96,7 +122,6 @@ function(req, res) {
     if (found) {
       res.status(200).send(found.attributes);
     } else {
-      console.log('>>>>>>>>>>>>>>>>> not found');
       util.getUrlTitle(uri, function(err, title) {
         if (err) {
           console.log('Error reading URL heading: ', err);
