@@ -64,10 +64,9 @@ app.post('/login',
       if (found) {
         // create session variable 
         req.session.validUser = { username: theUserName, password: pass};
-        console.log(req.session.validUser);
-        res.status(200).send('Correct username and password');
+        res.redirect('/');
       } else {
-        res.status(200).send('Wrong username and password');
+        res.redirect('/login');
       }
     });
   }
