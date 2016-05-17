@@ -3,6 +3,7 @@ var util = require('./lib/utility');
 var partials = require('express-partials');
 var bodyParser = require('body-parser');
 var session = require('client-sessions');
+var bcrypt = require('bcrypt-nodejs');
 
 var db = require('./app/config');
 var Users = require('./app/collections/users');
@@ -61,23 +62,29 @@ function(req, res) {
 });
 
 app.post('/login',
-  function(req, res) {
+function(req, res) {
+  var theUserName = req.body.username;
+  var pass = req.body.password;
 
-    var theUserName = req.body.username;
-    var pass = req.body.password;
-    
-    new User({ username: theUserName, password: pass}).fetch().then(function(found) {
-      // valid user name nad password
-      if (found) {
-        // create session variable 
-        req.session.validUser = { username: theUserName, password: pass};
-        res.redirect('/');
-      } else {
-        res.redirect('/login');
-      }
-    });
-  }
-);
+  new User({username: theUserName}).fetch().then(function(found) {
+    // valid user name
+    if (found) {
+      bcrypt.compare(pass, found.attributes.password, function(err, res2) {
+        // password matches
+        if (res2) {
+          req.session.validUser = theUserName;
+          res.status(200).redirect('/');
+        } else {
+        // password does not match
+          res.status(404).send('Invalid password');
+        }
+      });
+    } else {
+      res.status(404).send('Invalid username');
+      //username not found
+    }
+  });
+});
 
 app.get('/signup', 
 function(req, res) {
@@ -92,7 +99,7 @@ app.post('/signup',
     new User({ username: theUserName}).fetch().then(function(found) {
       // username or password already exists
       if (found) {
-        res.status(200).send('username already exists');
+        res.status(403).send('username already exists');
       } else {
       // create new username and password and redirect to homepage
         Users.create({
@@ -100,6 +107,7 @@ app.post('/signup',
           password: pass
         })
         .then(function(newUser) {
+          req.session.validUser = theUserName;
           res.status(200).redirect('/');
         });
 
@@ -179,4 +187,4 @@ app.get('/*', function(req, res) {
 });
 
 console.log('Shortly is listening on 4568');
-app.listen(4568);
+app.listen(4568); 
